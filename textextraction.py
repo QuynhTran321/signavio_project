@@ -11,11 +11,7 @@ pip install tika
 
 from tika import parser # pip install tika
 
-from google.colab import drive
-
-drive.mount('/content/gdrive')
-
-raw = parser.from_file('/content/gdrive/My Drive/Signavio_Test/example.pdf')
+raw = parser.from_file('data/Cornell Medical College.pdf')
 
 import re
 
@@ -62,6 +58,7 @@ sortedwordcounts
 
 #check for word pairs where side by side words make one pair
 text = raw['content']
+
 words = text.split() #note that split without arguments splits on whitespace
 pairs = [words[i]+' '+words[i+1] for i in range(len(words)-1)]
 print(pairs)
