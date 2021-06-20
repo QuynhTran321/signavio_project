@@ -8,7 +8,7 @@ import datefinder
 import pprint
 
 class extract_meta_information():
-    def __init__(self, file, keywords_names_list, keywords_date_list, keywords_docs_list):
+    def __init__(self, file, keywords_names_list, keywords_date_list, keywords_docs_list, ngrams_process_docs):
         """
         Params:
         text = process document as string
@@ -18,6 +18,7 @@ class extract_meta_information():
         self.keywords_names_list = keywords_names_list
         self.keywords_docs_list = keywords_docs_list
         self.keywords_date_list = keywords_date_list
+        self.ngrams_process_docs = ngrams_process_docs
         self.output = [] 
 
         
@@ -100,15 +101,29 @@ class extract_meta_information():
             if (token1.pos_ == "NOUN") and (token2.pos_ == "NOUN" or token2.pos_ == "ADP") and (token3.pos_ == "NOUN"):
                 indices_ngram3.append(idx)
 
-        # generate ngrams (bigrams and trigrmms) starting with a noun word, ngram contains at least one keyword
-        ngrams2 = [str(doc_spacy[index:index+2]) for index in indices_ngram2 if any(elem in self.keywords_docs_list for elem in str(doc_spacy[index:index+2]).split())]
-        ngrams3 = [str(doc_spacy[index:index+3]) for index in indices_ngram3 if any(elem in self.keywords_docs_list for elem in str(doc_spacy[index:index+3]).split())]
+        """
+       
+        for ngram in self.ngrams_process_docs:
+            # generate ngrams (bigrams and trigrmms) starting with a noun word, ngram contains at least one keyword
+            ngrams2 = [str(doc_spacy[index:index+2]) for index in indices_ngram2 if any(elem in self.keywords_docs_list for elem in str(doc_spacy[index:index+2]).split())]
+            ngrams3 = [str(doc_spacy[index:index+3]) for index in indices_ngram3 if any(elem in self.keywords_docs_list for elem in str(doc_spacy[index:index+3]).split())]
 
-        # count ngrams 
-        most_common_ngrams2 = Counter(ngrams2).most_common()
-        most_common_ngrams3 = Counter(ngrams3).most_common()
+            # count ngrams 
+            most_common_ngrams2 = Counter(ngrams2).most_common()
+            most_common_ngrams3 = Counter(ngrams3).most_common()
 
         return([most_common_ngrams2, most_common_ngrams3])
+      """
+        process_docs_ngrams_lst = []
+        for ngram in self.ngrams_process_docs:
+            # generate ngrams (bigrams and trigrmms) starting with a noun word, ngram contains at least one keyword
+            ngrams = [str(doc_spacy[index:index+ngram]) for index in indices_ngram2 if any(elem in self.keywords_docs_list for elem in str(doc_spacy[index:index+ngram]).split())]
+
+            # count ngrams 
+            process_docs_ngrams_lst.append(Counter(ngrams).most_common())
+
+        return(process_docs_ngrams_lst)
+      
     
     def extract_date(self):
         # This function is used to find diffenet date attributes in the process documents
