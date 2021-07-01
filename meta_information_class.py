@@ -6,20 +6,21 @@ import pandas as pd
 from nltk.util import ngrams
 import datefinder
 import pprint
+import itertools    
+
 
 class extract_meta_information():
-    def __init__(self, file, keywords_names_list, keywords_date_list, keywords_docs_list, ngrams_process_docs):
+    def __init__(self, file):
         """
         Params:
         text = process document as string
         keywords_list = most common keywords to identify process name, documents and date (based on keywords matrix)
         """
         self.text = parser.from_file(file)['content']
-        self.keywords_names_list = keywords_names_list
-        self.keywords_docs_list = keywords_docs_list
-        self.keywords_date_list = keywords_date_list
-        self.ngrams_process_docs = ngrams_process_docs
-        self.output = [] 
+        self.keywords_names_list = ['procedure', 'process', 'sop', 'policy', 'manual', 'step']
+        self.keywords_description_list = ['introduction', 'purpose', 'scope']
+        self.keywords_docs_list = ['purchase', 'order', 'form', 'request', 'invoice', 'documents', 'document', 'documentation']
+        self.keywords_date_list = ['issued date','issue-date','effective-date', 'implementation-date','updated', 'adopted' ,'revised',"review date","revision date","version","last revision","issued","effective date","date"]
 
         
     def preprocessing_text_date(self):
@@ -42,8 +43,7 @@ class extract_meta_information():
         # search process name based on selected keywords from keywords_list
         # regex: line containing keyword, line break
         try: 
-            self.name_keywords = re.search(r'(.+({marker})[^\n])'.format(marker = '|'.join(self.keywords_names_list)), self.text, re.IGNORECASE).group(1)
-            self.output.append(self.name_keywords)
+            self.name_keywords = re.search(r'(.+({})[^\n])'.format('|'.join(self.keywords_names_list)), self.text, re.IGNORECASE).group(1)
             return(self.name_keywords)
         except:
             #print("Keywords not found in document")
@@ -54,27 +54,29 @@ class extract_meta_information():
         # regex: Title, any special character, name, line break
         try:
             self.name_title = re.search(r'((?<=Title(\W)).+[^\n])', self.text, re.IGNORECASE).group(1)
-            self.output.append(self.name_title)
             return(self.name_title)
         except:
             #print("Keyword {} not found in document".format("'Title'"))
             pass 
 
     def process_name_first_line(self):
+        try:
         # extract first line of document 
         # regex: last line break of first string, name, line break
-        self.name_first = re.search(r'([^\n].+[^\n])', self.text).group(1)
-        self.output.append(self.name_first)
-        return(self.name_first)
+            self.name_first = re.search(r'([^\n].+[^\n])', self.text).group(1)
+            return(self.name_first)
+        except:
+            pass
 
     def extract_process_names(self):
-        # check which process name appear how often 
-        self.process_name_keywords()
-        self.process_name_title()
-        self.process_name_first_line()
-        cleaned_lst = [string.lstrip().rstrip() for string in self.output]  # remove leading and end whitespaces
-        c = Counter(cleaned_lst) # most common substrings out of every method 
-        return(c.most_common())
+        # check which process name appear how often
+        functions = [self.process_name_keywords(), self.process_name_title(), self.process_name_first_line()]
+        names_all = [func for func in functions if func is not None]
+
+        cleaned_lst = [string.lstrip().rstrip() for string in names_all]  # remove leading and end whitespaces
+        most_common_names = Counter(cleaned_lst).most_common() # most common substrings out of every method 
+
+        return(most_common_names)
     
     # Process Documents
     # using spacy model, ngrams and keywords
@@ -95,15 +97,19 @@ class extract_meta_information():
         indices_ngram3 = []
         doc_splitted = str(doc_spacy).split(" ")
         for idx, (token1, token2, token3) in enumerate(zip(doc_spacy, doc_spacy[1:], doc_spacy[2:])):
-            if (token1.pos_ == "NOUN") and (token2.pos_ == "NOUN"):
-                indices_ngram2.append(idx)
+            # don't take tokens into account which have consists of less then two letters and consist of same words
+            if str(token1) != str(token2) and str(token1) != str(token3) and str(token2) != str(token3):
+                if len(str(token1)) >= 2 and len(str(token2)) >= 2 and len(str(token3)) >= 2: 
 
-            if (token1.pos_ == "NOUN") and (token2.pos_ == "NOUN" or token2.pos_ == "ADP") and (token3.pos_ == "NOUN"):
-                indices_ngram3.append(idx)
+                    if (token1.pos_ == "NOUN") and (token2.pos_ == "NOUN"):
+                        indices_ngram2.append(idx)
 
-        """
-       
-        for ngram in self.ngrams_process_docs:
+                    if (token1.pos_ == "NOUN") and (token2.pos_ == "NOUN" or token2.pos_ == "ADP") and (token3.pos_ == "NOUN"):
+                        indices_ngram3.append(idx)
+
+
+        ngrams_process_docs = [2,3]
+        for ngram in ngrams_process_docs:
             # generate ngrams (bigrams and trigrmms) starting with a noun word, ngram contains at least one keyword
             ngrams2 = [str(doc_spacy[index:index+2]) for index in indices_ngram2 if any(elem in self.keywords_docs_list for elem in str(doc_spacy[index:index+2]).split())]
             ngrams3 = [str(doc_spacy[index:index+3]) for index in indices_ngram3 if any(elem in self.keywords_docs_list for elem in str(doc_spacy[index:index+3]).split())]
@@ -112,18 +118,9 @@ class extract_meta_information():
             most_common_ngrams2 = Counter(ngrams2).most_common()
             most_common_ngrams3 = Counter(ngrams3).most_common()
 
+    
         return([most_common_ngrams2, most_common_ngrams3])
-      """
-        process_docs_ngrams_lst = []
-        for ngram in self.ngrams_process_docs:
-            # generate ngrams (bigrams and trigrmms) starting with a noun word, ngram contains at least one keyword
-            ngrams = [str(doc_spacy[index:index+ngram]) for index in indices_ngram2 if any(elem in self.keywords_docs_list for elem in str(doc_spacy[index:index+ngram]).split())]
-
-            # count ngrams 
-            process_docs_ngrams_lst.append(Counter(ngrams).most_common())
-
-        return(process_docs_ngrams_lst)
-      
+    
     
     def extract_date(self):
         # This function is used to find diffenet date attributes in the process documents
@@ -203,7 +200,7 @@ class extract_meta_information():
             return finallist
         
         except: 
-            return ["None"]
+            return [None]
 
     def find_linked_processes1(self):
         try:
@@ -216,7 +213,7 @@ class extract_meta_information():
                 fmiclean.append(element.replace("\n",""))
             return fmiclean
         except: 
-            return ["None"]
+            return [None]
     
     def comb_linked_processes(self):
 
@@ -230,14 +227,48 @@ class extract_meta_information():
         elif fmi:
             return self.find_linked_processes1()
         else:
-            return ["None"]
+            return [None]
+        
+    def extract_description(self):
+
+        text = self.text.replace("..", "")
+        text = text.lower()
+
+        numeration_start = ['i', '1']
+        numeration_end = ['ii', '2']
+        character = ['\.', '\)', ' ', '\:']
+
+        joiner = "".join
+        a = [numeration_start,character]
+        b = list(itertools.product(*a))
+        search_start = [joiner(words) for words in b]
+        a = [numeration_end,character]
+        b = list(itertools.product(*a))
+        search_end = [joiner(words) for words in b]
+
+        description_lst = []
+
+        for i in range(len(search_start)):
+            try:
+                string = re.search(r'\n{}(.*?)\n{}'.format(search_start[i], search_end[i]), text, re.DOTALL).group(1)
+                if any(x in string for x in self.keywords_description_list):
+                    substring = string[string.find('\n'):]
+                    description = ' '.join(substring.split())
+                    if len(description) > 10:
+                        description_lst.append(description)
+            except: 
+                pass
+            
+        return description_lst
+
 
     def create_dict(self):
         d = {}
         d["name"] = self.extract_process_names()
         d["date"] = self.extract_date()
-        d["documents (bigrams)"] = self.extract_documents()[0][:3]
-        d["documents (trigrams)"] = self.extract_documents()[1][:3]
+        d["description"] = self.extract_description()
+        d["documents (bigrams)"] = self.extract_documents()[0][:3] # show just top 3 most mentioned documents
+        d["documents (trigrams)"] = self.extract_documents()[1][:3] # show just top 3 most mentioned documents
         d["linked processes"] = self.comb_linked_processes()
 
         return d 
@@ -246,8 +277,9 @@ class extract_meta_information():
         
         process_name = self.extract_process_names()
         date = self.extract_date()
-        documents_bigrams = self.extract_documents()[0][:3]
-        documents_trigrams = self.extract_documents()[1][:3]
+        description = self.extract_description()
+        documents_bigrams = self.extract_documents()[0][:3] # show just top 3 most mentioned documents
+        documents_trigrams = self.extract_documents()[1][:3] # show just top 3 most mentioned documents
         related_documents = self.comb_linked_processes()
 
         df = pd.DataFrame(columns=["meta information", "value", "count"])
@@ -257,6 +289,12 @@ class extract_meta_information():
 
         for i in range(len(date)):
             df = df.append({'meta information':date[i][0], 'value':date[i][1], 'count':None}, ignore_index=True)
+
+        for i in range(len(description)):
+            if len(description) > 1:
+                df = df.append({'meta information':'description'+str(i), 'value':description[i], 'count':None}, ignore_index=True)
+            else:
+                df = df.append({'meta information':'description', 'value':description[i], 'count':None}, ignore_index=True)
 
         for i in range(len(documents_bigrams)):
             df = df.append({'meta information':'documents (2-gram)', 'value':documents_bigrams[i][0], 'count':documents_bigrams[i][1]}, ignore_index=True)
