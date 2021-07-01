@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[267]:
+# In[12]:
 
 
 from os import listdir
@@ -17,16 +17,15 @@ import os
 import glob
 
 
-# In[328]:
+# In[53]:
 
 
 accuracy_df = pd.read_csv(r'C:\Users\nitis\OneDrive\Dokumente\GitHub\signavio_project\accuracy test.csv',sep=',')
 def accuracy_documents():
-    # get only the data of the file 
+# get only the data of the file 
     y =accuracy_df.loc[accuracy_df['doc'].isin([file2])]
 # get the rows with particular meta data
-    y =y.loc[y['meta information'].isin(['documents'])]
-    y= y.reset_index(drop=True)
+    y =y.loc[y['meta information'].isin(['documents'])].reset_index(drop=True)
 # put it in the list
     data_manual = y['value'].to_list()
     data_manual = [x.replace(' ', '') for x in data_manual]
@@ -36,8 +35,7 @@ def accuracy_documents():
     a= information_df.loc[information_df['meta information'].isin(['documents'])]
     a = a.loc[a['doc'].isin([file2])]
     a = a.drop(['count'], axis=1)
-    a = a[["value"]]
-    a= a.reset_index(drop=True)
+    a = a[["value"]].reset_index(drop=True)
     list_of_x = a['value'].to_list()
     list_of_x = [x.replace(' ', '') for x in list_of_x]
     list_of_x = [each_string.lower() for each_string in list_of_x]
@@ -51,8 +49,7 @@ def accuracy_date():
     # get only the data of the file 
     y =accuracy_df.loc[accuracy_df['doc'].isin([file2])]
 # get the rows with particular meta data
-    y =y.loc[y['meta information'].isin(['date'])]
-    y= y.reset_index(drop=True)
+    y =y.loc[y['meta information'].isin(['date'])].reset_index(drop=True)
 # put it in the list
     data_manual = y['value'].to_list()
     data_manual = [x.replace(' ', '') for x in data_manual]
@@ -62,8 +59,7 @@ def accuracy_date():
     a= information_df.loc[information_df['meta information'].isin(['date'])]
     a = a.loc[a['doc'].isin([file2])]
     a = a.drop(['count'], axis=1)
-    a = a[["value"]]
-    a= a.reset_index(drop=True)
+    a = a[["value"]].reset_index(drop=True)
     list_of_x = a['value'].to_list()
     list_of_x = [x.replace(' ', '') for x in list_of_x]
     list_of_x = [each_string.lower() for each_string in list_of_x]
@@ -103,8 +99,7 @@ def name():
     # get only the data of the file 
     y =accuracy_df.loc[accuracy_df['doc'].isin([file2])]
 # get the rows with particular meta data
-    y =y.loc[y['meta information'].isin(['name'])]
-    y= y.reset_index(drop=True)
+    y =y.loc[y['meta information'].isin(['name'])].reset_index(drop=True)
 # put it in the list
     data_manual = y['value'].to_list()
     data_manual = [x.replace(' ', '') for x in data_manual]
@@ -114,8 +109,7 @@ def name():
     a= information_df.loc[information_df['meta information'].isin(['name'])]
     a = a.loc[a['doc'].isin([file2])]
     a = a.drop(['count'], axis=1)
-    a = a[["value"]]
-    a= a.reset_index(drop=True)
+    a = a[["value"]].reset_index(drop=True)
     list_of_x = a['value'].to_list()
     list_of_x = [x.replace(' ', '') for x in list_of_x]
     list_of_x = [each_string.lower() for each_string in list_of_x]
@@ -126,23 +120,23 @@ def name():
     return (accuracy)
 
 
-# In[318]:
+# In[54]:
 
 
 filenames = [f for f in listdir('data_accuracy') if isfile(join('data_accuracy', f))]
-file_idx = 3
+file_idx = 2
 file = 'data_accuracy/'+filenames[file_idx]
 file
 
 
-# In[319]:
+# In[55]:
 
 
 raw = parser.from_file(file)
 text = raw["content"]
 
 
-# In[320]:
+# In[56]:
 
 
 keywords_names_list = ['procedure', 'process', 'sop', 'policy', 'manual', 'step']
@@ -150,16 +144,15 @@ keywords_documents_list = ['purchase', 'order', 'form', 'request', 'invoice', 'd
 keywords_date_list = ['issued date','issue-date','effective-date', 'implementation-date','updated', 'adopted' ,'revised',"review date","revision date","version","last revision","issued","effective date","date"]
 
 
-# In[321]:
+# In[57]:
 
 
 information = meta_information_class.extract_meta_information(file, keywords_names_list, keywords_date_list, keywords_documents_list)
 information_dict = information.create_dict()
 information_df = information.create_df()
-information_df
 
 
-# In[322]:
+# In[58]:
 
 
 information_df ['doc'] = file.replace('data_accuracy/','')
@@ -172,10 +165,9 @@ information_df ['meta information'] = information_df ['meta information'].replac
 information_df ['meta information'] = information_df ['meta information'].replace('version','date')
 information_df ['meta information'] = information_df ['meta information'].replace('issued date','date')
 information_df ['meta information'] = information_df ['meta information'].replace('revision date','date')
-information_df
 
 
-# In[323]:
+# In[59]:
 
 
 #extract the file name in order to get the data only relavant to the file name
@@ -184,18 +176,9 @@ file2 = file1.replace('data_accuracy/','')
 file2
 
 
-# In[324]:
-
-
-test = pd.read_csv(r'C:\Users\nitis\OneDrive\Dokumente\GitHub\signavio_project\accuracy test.csv',sep=',')
-    # get only the data of the file 
-test_y =test.loc[test['doc'].isin([file2])]
-test_y
-
-
 # # ACCURACY
 
-# In[325]:
+# In[60]:
 
 
 def accuracy():
@@ -203,17 +186,15 @@ def accuracy():
     date = accuracy_date()
     document= accuracy_documents()
     names = name()
-    return [date,linked_process,document,names]
-    
-    
+    return [date,linked_process,document,names]    
 
 
-# In[326]:
+# In[61]:
 
 
 result3 = accuracy()
 accuracy = pd.DataFrame(result3).transpose()
-accuracy1 = accuracy.rename(columns={0: 'Date', 1: 'linked_process', 2:'document',3:'names'})
+accuracy1 = accuracy.rename(columns={0: 'Date', 1: 'linked_process', 2:'documents',3:'names'})
 accuracy1
 
 
