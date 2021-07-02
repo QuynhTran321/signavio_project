@@ -267,8 +267,8 @@ class extract_meta_information():
         d["name"] = self.extract_process_names()
         d["date"] = self.extract_date()
         d["description"] = self.extract_description()
-        d["documents (bigrams)"] = self.extract_documents()[0][:3] # show just top 3 most mentioned documents
-        d["documents (trigrams)"] = self.extract_documents()[1][:3] # show just top 3 most mentioned documents
+        d["documents (bigrams)"] = self.extract_documents()[0] # show just top 3 most mentioned documents
+        d["documents (trigrams)"] = self.extract_documents()[1] # show just top 3 most mentioned documents
         d["linked processes"] = self.comb_linked_processes()
 
         return d 
@@ -278,8 +278,8 @@ class extract_meta_information():
         process_name = self.extract_process_names()
         date = self.extract_date()
         description = self.extract_description()
-        documents_bigrams = self.extract_documents()[0][:3] # show just top 3 most mentioned documents
-        documents_trigrams = self.extract_documents()[1][:3] # show just top 3 most mentioned documents
+        documents_bigrams = self.extract_documents()[0] # show just top 3 most mentioned documents
+        documents_trigrams = self.extract_documents()[1] # show just top 3 most mentioned documents
         related_documents = self.comb_linked_processes()
 
         df = pd.DataFrame(columns=["meta information", "value", "count"])
