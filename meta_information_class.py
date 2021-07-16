@@ -1,29 +1,32 @@
-import nltk, re, string, collections, spacy
-from tika import parser 
+import collections, datefinder, nltk, itertools, re, spacy, string
+import pandas as pd
+
 from collections import Counter
 from datetime import datetime, date
-import pandas as pd
+from gensim.parsing.preprocessing import STOPWORDS, strip_numeric, strip_punctuation, strip_multiple_whitespaces, remove_stopwords
+from nltk.corpus import stopwords
 from nltk.util import ngrams
-import datefinder
-import pprint
-import itertools    
+from tika import parser 
+
 
 
 class extract_meta_information():
     def __init__(self, file):
-        """
+        '''
         Params:
         text = process document as string
         keywords_list = most common keywords to identify process name, documents and date (based on keywords matrix)
-        """
+        '''
         self.text = parser.from_file(file)['content']
         self.keywords_names_list = ['procedure', 'process', 'sop', 'policy', 'manual', 'step']
         self.keywords_description_list = ['introduction', 'purpose', 'scope']
         self.keywords_docs_list = ['purchase', 'order', 'form', 'request', 'invoice', 'documents', 'document', 'documentation']
-        self.keywords_date_list = ['issued date','issue-date','effective-date', 'implementation-date','updated', 'adopted' ,'revised',"review date","revision date","version","last revision","issued","effective date","date"]
+        self.keywords_date_list = ['issued date','issue-date','effective-date', 'implementation-date','updated', 'adopted' ,'revised','review date','revision date','version','last revision','issued','effective date','date']
+        self.nlp = spacy.load('en_core_web_sm')
 
-        
+     
     def preprocessing_text_date(self):
+        # preprocessing for date extraction 
         cleaned_text = self.text.strip()
         cleaned_text = cleaned_text.replace('  ', '')
         cleaned_text = cleaned_text.replace(' \n',' ')
@@ -32,8 +35,7 @@ class extract_meta_information():
         return cleaned_text
 
     def calcu (self, df_date):
-        # This function is used to find date from the string
-        #cleaned_text = self.preprocessing_text_date()
+        # This function is used to find date from a string
         matches = datefinder.find_dates(df_date)
         for match in matches:
             return match
@@ -46,7 +48,6 @@ class extract_meta_information():
             self.name_keywords = re.search(r'(.+({})[^\n])'.format('|'.join(self.keywords_names_list)), self.text, re.IGNORECASE).group(1)
             return(self.name_keywords)
         except:
-            #print("Keywords not found in document")
             pass
             
     def process_name_title(self):
@@ -56,7 +57,6 @@ class extract_meta_information():
             self.name_title = re.search(r'((?<=Title(\W)).+[^\n])', self.text, re.IGNORECASE).group(1)
             return(self.name_title)
         except:
-            #print("Keyword {} not found in document".format("'Title'"))
             pass 
 
     def process_name_first_line(self):
@@ -85,26 +85,25 @@ class extract_meta_information():
         # Convert to lowercases
         doc = self.text.lower()
         # Replace all none alphanumeric characters with spaces
-        doc = re.sub("[^a-zA-Z]+", " ", doc)
+        doc = re.sub('[^a-zA-Z]+', ' ', doc)
 
         # apply spacy model (english) that checks whether the doc contains annotation on a token attribute
-        nlp = spacy.load('en_core_web_sm',disable=['ner','textcat'])
-        doc_spacy = nlp(doc)
+        doc_spacy = self.nlp(doc)
 
         # determine relevant words: 
         # conditions: 1.token == noun, 2. token == noun or adposition, 3. token == noun 
         indices_ngram2 = []
         indices_ngram3 = []
-        doc_splitted = str(doc_spacy).split(" ")
+        doc_splitted = str(doc_spacy).split(' ')
         for idx, (token1, token2, token3) in enumerate(zip(doc_spacy, doc_spacy[1:], doc_spacy[2:])):
             # don't take tokens into account which have consists of less then two letters and consist of same words
             if str(token1) != str(token2) and str(token1) != str(token3) and str(token2) != str(token3):
                 if len(str(token1)) >= 2 and len(str(token2)) >= 2 and len(str(token3)) >= 2: 
 
-                    if (token1.pos_ == "NOUN") and (token2.pos_ == "NOUN"):
+                    if (token1.pos_ == 'NOUN') and (token2.pos_ == 'NOUN'):
                         indices_ngram2.append(idx)
 
-                    if (token1.pos_ == "NOUN") and (token2.pos_ == "NOUN" or token2.pos_ == "ADP") and (token3.pos_ == "NOUN"):
+                    if (token1.pos_ == 'NOUN') and (token2.pos_ == 'NOUN' or token2.pos_ == 'ADP') and (token3.pos_ == 'NOUN'):
                         indices_ngram3.append(idx)
 
 
@@ -178,15 +177,15 @@ class extract_meta_information():
             relateddocs = self.text[self.text.find(string):]
 
             #as there seems to be some odd whitespaces, I remove all whitespaces
-            relateddocsnospaces = relateddocs.replace(" ", "")
+            relateddocsnospaces = relateddocs.replace(' ', '')
 
             #I split the string for every \n, one time without white spaces and one time with white spaces
-            relateddocssplitnospaces = relateddocsnospaces.split("\n")
-            relateddocssplit = relateddocs.split("\n")
+            relateddocssplitnospaces = relateddocsnospaces.split('\n')
+            relateddocssplit = relateddocs.split('\n')
 
             #I check for all linked process documents based on when there are more linbreaks than 1
             for line in range(len(relateddocssplitnospaces)):
-                if relateddocssplitnospaces[line] == "" and relateddocssplitnospaces[line+1] == "":
+                if relateddocssplitnospaces[line] == '' and relateddocssplitnospaces[line+1] == '':
                     position = line
                     break
             
@@ -210,7 +209,7 @@ class extract_meta_information():
             #remove line breaks
             fmiclean = []
             for element in fmi:
-                fmiclean.append(element.replace("\n",""))
+                fmiclean.append(element.replace('\n',''))
             return fmiclean
         except: 
             return [None]
@@ -231,14 +230,14 @@ class extract_meta_information():
         
     def extract_description(self):
 
-        text = self.text.replace("..", "")
+        text = self.text.replace('..', '')
         text = text.lower()
 
         numeration_start = ['i', '1']
         numeration_end = ['ii', '2']
         character = ['\.', '\)', ' ', '\:']
 
-        joiner = "".join
+        joiner = ''.join
         a = [numeration_start,character]
         b = list(itertools.product(*a))
         search_start = [joiner(words) for words in b]
@@ -260,41 +259,76 @@ class extract_meta_information():
                 pass
             
         return description_lst
+    
+    def extract_actors_departments(self):
+        #replace all line breaks with ''
+        text = self.text.replace('\n','')
+        #do some text preprocessing
+        text = [strip_numeric(data) for data in text]
+        text = [strip_punctuation(data) for data in text]
+        text = [strip_multiple_whitespaces(data) for data in text]
+        text = ('').join(text)
+        #remove stopwords
+        nltk_stopwords = set(stopwords.words('english'))
+        text = remove_stopwords(text)
+        #run spacy name entity recognition model on it and store results of organization in mostcommon
+        doc = self.nlp(text)
+        items = [x.text for x in doc.ents if x.label_ in ['ORG']]
+        mostcommon = Counter(items).most_common()
+
+        #return all entities, which appear more often than 3 times
+        mostcommon_3 = [mostcommon[i] for i in range(len(mostcommon)) if mostcommon[i][1] >= 3]
+        
+        return mostcommon_3
 
 
     def create_dict(self):
         d = {}
-        d["name"] = self.extract_process_names()
-        d["date"] = self.extract_date()
-        d["description"] = self.extract_description()
-        d["documents (bigrams)"] = self.extract_documents()[0] # show just top 3 most mentioned documents
-        d["documents (trigrams)"] = self.extract_documents()[1] # show just top 3 most mentioned documents
-        d["linked processes"] = self.comb_linked_processes()
+        if len(self.extract_process_names()) > 1:
+            d['name'] = self.extract_process_names()
+        else:
+            d['name'] = self.extract_process_names()[0][0]
+
+        d['date'] = self.extract_date()
+        d['departments'] = self.extract_actors_departments()
+        d['documents (2-gram)'] = self.extract_documents()[0][:3] # show just top 3 most mentioned documents
+        d['documents (3-gram)'] = self.extract_documents()[1][:3] # show just top 3 most mentioned documents
+        d['linked processes'] = self.comb_linked_processes()
+        d['description'] = self.extract_description()
+
 
         return d 
     
     def create_df(self):
-        
-        process_name = self.extract_process_names()
+
+        df = pd.DataFrame(columns=['meta information', 'value', 'count'])
+
+        if len(self.extract_process_names()) > 1:
+            process_name = self.extract_process_names()
+            for i in range(len(process_name)):
+                df = df.append({'meta information':'name', 'value':process_name[i][0], 'count':int(process_name[i][1])}, ignore_index=True)
+        else:
+            process_name = self.extract_process_names()[0][0]
+            df = df.append({'meta information':'name', 'value':process_name, 'count':None}, ignore_index=True)
+          
+
+
+
+            
         date = self.extract_date()
         description = self.extract_description()
-        documents_bigrams = self.extract_documents()[0] # show just top 3 most mentioned documents
-        documents_trigrams = self.extract_documents()[1] # show just top 3 most mentioned documents
+        department = self.extract_actors_departments()
+        documents_bigrams = self.extract_documents()[0][:3] # show just top 3 most mentioned documents
+        documents_trigrams = self.extract_documents()[1][:3] # show just top 3 most mentioned documents
         related_documents = self.comb_linked_processes()
 
-        df = pd.DataFrame(columns=["meta information", "value", "count"])
         
-        for i in range(len(process_name)):
-            df = df.append({'meta information':"name", 'value':process_name[i][0], 'count':int(process_name[i][1])}, ignore_index=True)
 
         for i in range(len(date)):
             df = df.append({'meta information':date[i][0], 'value':date[i][1], 'count':None}, ignore_index=True)
 
-        for i in range(len(description)):
-            if len(description) > 1:
-                df = df.append({'meta information':'description'+str(i), 'value':description[i], 'count':None}, ignore_index=True)
-            else:
-                df = df.append({'meta information':'description', 'value':description[i], 'count':None}, ignore_index=True)
+        for i in range(len(department)):
+            df = df.append({'meta information':'departments', 'value':department[i][0], 'count':int(department[i][1])}, ignore_index=True)
 
         for i in range(len(documents_bigrams)):
             df = df.append({'meta information':'documents (2-gram)', 'value':documents_bigrams[i][0], 'count':documents_bigrams[i][1]}, ignore_index=True)
@@ -304,8 +338,16 @@ class extract_meta_information():
 
         for i in range(len(related_documents)):    
             df = df.append({'meta information':'linked processes', 'value':related_documents[i], 'count':None}, ignore_index=True)
-            
+              
+        for i in range(len(description)):
+            if len(description) > 1:
+                df = df.append({'meta information':'description'+str(i), 'value':description[i], 'count':None}, ignore_index=True)
+            else:
+                df = df.append({'meta information':'description', 'value':description[i], 'count':None}, ignore_index=True)
+ 
         return df 
+    
+    
 
 
 
