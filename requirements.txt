@@ -1,0 +1,9 @@
+datefinder
+gensim
+nltk
+pandas
+pprintpp
+spacy==2.3.1
+tika
+
+
