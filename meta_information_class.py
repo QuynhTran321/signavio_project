@@ -24,7 +24,7 @@ class extract_meta_information():
         self.keywords_date_list = ['issued date','issue-date','effective-date', 'implementation-date','updated', 'adopted' ,'revised','review date','revision date','version','last revision','issued','effective date','date']
         self.nlp = spacy.load('en_core_web_sm')
 
-     
+    # Date
     def preprocessing_text_date(self):
         # preprocessing for date extraction 
         cleaned_text = self.text.strip()
@@ -34,13 +34,13 @@ class extract_meta_information():
 
         return cleaned_text
 
+    # Date
     def calcu (self, df_date):
         # This function is used to find date from a string
         matches = datefinder.find_dates(df_date)
         for match in matches:
             return match
-
-    #Process Name
+    # Name
     def process_name_keywords(self):
         # search process name based on selected keywords from keywords_list
         # regex: line containing keyword, line break
@@ -49,7 +49,7 @@ class extract_meta_information():
             return(self.name_keywords)
         except:
             pass
-            
+    # Name     
     def process_name_title(self):
         # search process name based on keyword 'Title'
         # regex: Title, any special character, name, line break
@@ -58,7 +58,7 @@ class extract_meta_information():
             return(self.name_title)
         except:
             pass 
-
+    # Name
     def process_name_first_line(self):
         try:
         # extract first line of document 
@@ -67,9 +67,10 @@ class extract_meta_information():
             return(self.name_first)
         except:
             pass
-
-    def extract_process_names(self):
-        # check which process name appear how often
+        
+    # Name
+    def extract_name(self):
+        # check which process name appears how often
         functions = [self.process_name_keywords(), self.process_name_title(), self.process_name_first_line()]
         names_all = [func for func in functions if func is not None]
 
@@ -78,10 +79,10 @@ class extract_meta_information():
 
         return(most_common_names)
     
-    # Process Documents
-    # using spacy model, ngrams and keywords
-    def extract_documents(self):
-    
+    # Documents
+    def extract_document(self):
+        # using spacy model, ngrams and keywords
+
         # Convert to lowercases
         doc = self.text.lower()
         # Replace all none alphanumeric characters with spaces
@@ -91,12 +92,13 @@ class extract_meta_information():
         doc_spacy = self.nlp(doc)
 
         # determine relevant words: 
-        # conditions: 1.token == noun, 2. token == noun or adposition, 3. token == noun 
+        # conditions for bigrams: 1.token == noun, 2. token == noun 
+        # conditions for trigrams: 1.token == noun, 2. token == noun or adposition, 3. token == noun
         indices_ngram2 = []
         indices_ngram3 = []
         doc_splitted = str(doc_spacy).split(' ')
         for idx, (token1, token2, token3) in enumerate(zip(doc_spacy, doc_spacy[1:], doc_spacy[2:])):
-            # don't take tokens into account which have consists of less then two letters and consist of same words
+            # don't take tokens into account which have consists of less then two letters and consists of same consecutive words 
             if str(token1) != str(token2) and str(token1) != str(token3) and str(token2) != str(token3):
                 if len(str(token1)) >= 2 and len(str(token2)) >= 2 and len(str(token3)) >= 2: 
 
@@ -117,10 +119,9 @@ class extract_meta_information():
             most_common_ngrams2 = Counter(ngrams2).most_common()
             most_common_ngrams3 = Counter(ngrams3).most_common()
 
-    
         return([most_common_ngrams2, most_common_ngrams3])
     
-    
+    # Date
     def extract_date(self):
         # This function is used to find diffenet date attributes in the process documents
         
@@ -166,6 +167,7 @@ class extract_meta_information():
 
         return list(df[['extract', 'date']].itertuples(index=False, name=None))
 
+    # Linked Processes
     def find_linked_processes(self):
         try:
             #look for term related documents
@@ -201,9 +203,10 @@ class extract_meta_information():
         except: 
             return [None]
 
+    #Linked Processes
     def find_linked_processes1(self):
         try:
-            #Find all sentences which include for more information
+            #find all sentences which include for more information
             fmi = re.findall(r'([^.]*For more information[^.]+.)', self.text, flags = re.IGNORECASE)
 
             #remove line breaks
@@ -213,8 +216,9 @@ class extract_meta_information():
             return fmiclean
         except: 
             return [None]
-    
-    def comb_linked_processes(self):
+        
+    #Linked Processes
+    def comb_linked_process(self):
 
         #check for the different extraction methods
         related = re.findall(r'(.+RELATED DOCUMENTS[^\n]+\n)', self.text, flags = re.IGNORECASE)
@@ -228,25 +232,30 @@ class extract_meta_information():
         else:
             return [None]
         
+    #Description
     def extract_description(self):
 
         text = self.text.replace('..', '')
         text = text.lower()
-
+        
+        # Find structured headings based on numbering like 1., 2. or i), ii)
+        # Since the description part can be found most often in the first section of a documentation, we are searching for headings starting with a '1' or 'i'. However it could be the case that the description is appearing at a later point or does not even has a heading with numbering. 
         numeration_start = ['i', '1']
         numeration_end = ['ii', '2']
         character = ['\.', '\)', ' ', '\:']
 
+        # create list which contains all numeration combinations (for example 1., 1), 1:) for first heading and second 
         joiner = ''.join
         a = [numeration_start,character]
         b = list(itertools.product(*a))
         search_start = [joiner(words) for words in b]
+        
         a = [numeration_end,character]
         b = list(itertools.product(*a))
         search_end = [joiner(words) for words in b]
 
+        # search for descriptions containing more than 10 characters and between a line that shows a heading with starting numeration and a line showing a heading with end numeration. Headings are separated from text by line breaks. 
         description_lst = []
-
         for i in range(len(search_start)):
             try:
                 string = re.search(r'\n{}(.*?)\n{}'.format(search_start[i], search_end[i]), text, re.DOTALL).group(1)
@@ -259,8 +268,9 @@ class extract_meta_information():
                 pass
             
         return description_lst
-    
-    def extract_actors_departments(self):
+   
+    # Actor and Department
+    def extract_actors_department(self):
         #replace all line breaks with ''
         text = self.text.replace('\n','')
         #do some text preprocessing
@@ -281,52 +291,47 @@ class extract_meta_information():
         
         return mostcommon_3
 
-
+    # Output Dictionary
     def create_dict(self):
         d = {}
-        if len(self.extract_process_names()) > 1:
-            d['name'] = self.extract_process_names()
+        if len(self.extract_name()) > 1:
+            d['name'] = self.extract_name()
         else:
-            d['name'] = self.extract_process_names()[0][0]
+            d['name'] = self.extract_name()[0][0]
 
         d['date'] = self.extract_date()
-        d['departments'] = self.extract_actors_departments()
-        d['documents (2-gram)'] = self.extract_documents()[0][:3] # show just top 3 most mentioned documents
-        d['documents (3-gram)'] = self.extract_documents()[1][:3] # show just top 3 most mentioned documents
-        d['linked processes'] = self.comb_linked_processes()
+        d['departments'] = self.extract_actors_department()
+        d['documents (2-gram)'] = self.extract_document()[0][:3] # show just top 3 most often mentioned documents
+        d['documents (3-gram)'] = self.extract_document()[1][:3] # show just top 3 most often mentioned documents
+        d['linked processes'] = self.comb_linked_process()
         d['description'] = self.extract_description()
-
 
         return d 
     
+    # Output DataFrame
     def create_df(self):
 
         df = pd.DataFrame(columns=['meta information', 'value', 'count'])
 
-        if len(self.extract_process_names()) > 1:
-            process_name = self.extract_process_names()
+        if len(self.extract_name()) > 1:
+            process_name = self.extract_name()
             for i in range(len(process_name)):
                 df = df.append({'meta information':'name', 'value':process_name[i][0], 'count':int(process_name[i][1])}, ignore_index=True)
         else:
-            process_name = self.extract_process_names()[0][0]
+            process_name = self.extract_name()[0][0]
             df = df.append({'meta information':'name', 'value':process_name, 'count':None}, ignore_index=True)
-          
-
-
-
-            
+           
         date = self.extract_date()
         description = self.extract_description()
-        department = self.extract_actors_departments()
-        documents_bigrams = self.extract_documents()[0][:3] # show just top 3 most mentioned documents
-        documents_trigrams = self.extract_documents()[1][:3] # show just top 3 most mentioned documents
-        related_documents = self.comb_linked_processes()
+        department = self.extract_actors_department()
+        documents_bigrams = self.extract_document()[0][:3] # show just top 3 most mentioned documents
+        documents_trigrams = self.extract_document()[1][:3] # show just top 3 most mentioned documents
+        related_documents = self.comb_linked_process()
 
-        
 
         for i in range(len(date)):
             df = df.append({'meta information':date[i][0], 'value':date[i][1], 'count':None}, ignore_index=True)
-
+        
         for i in range(len(department)):
             df = df.append({'meta information':'departments', 'value':department[i][0], 'count':int(department[i][1])}, ignore_index=True)
 
