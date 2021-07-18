@@ -170,7 +170,7 @@ class extract_meta_information():
     # Linked Processes
     def find_linked_processes(self):
         try:
-            #look for term related documents
+            #initiate list and add all matches for the term "related documents" to it
             linkeddocs = re.findall(r'(.+RELATED DOCUMENTS[^\n]+\n)', self.text, flags = re.IGNORECASE)
             #convert first entry of the list to string
             string = str(linkeddocs[0])
@@ -178,23 +178,24 @@ class extract_meta_information():
             #get all lines after the string
             relateddocs = self.text[self.text.find(string):]
 
-            #as there seems to be some odd whitespaces, I remove all whitespaces
+            #as there seems to be some odd whitespaces, all whitespaces are removed
             relateddocsnospaces = relateddocs.replace(' ', '')
 
             #I split the string for every \n, one time without white spaces and one time with white spaces
             relateddocssplitnospaces = relateddocsnospaces.split('\n')
             relateddocssplit = relateddocs.split('\n')
 
-            #I check for all linked process documents based on when there are more linbreaks than 1
+            #loop through the split text and see when there are two consecutive linebreaks (here displayed by '')
+            #this marks the end of the related documents section
             for line in range(len(relateddocssplitnospaces)):
                 if relateddocssplitnospaces[line] == '' and relateddocssplitnospaces[line+1] == '':
                     position = line
                     break
             
-             #I split the list on the above solution
+            #with the end found above, finalrelateddocs contains the respective section of related documents
             finalrelateddocs = relateddocssplit[0:position]
 
-            #I remove empty strings
+            #remove empty strings
             finallist = list(filter(None, finalrelateddocs))
 
             #return finallist
@@ -206,10 +207,10 @@ class extract_meta_information():
     #Linked Processes
     def find_linked_processes1(self):
         try:
-            #find all sentences which include for more information
+            #find all sentences which include for more information with regular expressions
             fmi = re.findall(r'([^.]*For more information[^.]+.)', self.text, flags = re.IGNORECASE)
 
-            #remove line breaks
+            #remove line breaks and add all the sentences to a list, which is returned then
             fmiclean = []
             for element in fmi:
                 fmiclean.append(element.replace('\n',''))
