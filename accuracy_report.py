@@ -216,5 +216,3 @@ accuracy1
 # 
 # Next step: Try to enhance the code so that we can increase the accuracy. 
 # Loop over and put in a matrix for all documents
-# 
-
