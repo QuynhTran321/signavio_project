@@ -270,7 +270,7 @@ class extract_meta_information():
             
         return description_lst
    
-    # Actor and Department
+    # Actors and Department
     def extract_actors_department(self):
         #replace all line breaks with ''
         text = self.text.replace('\n','')
@@ -282,12 +282,12 @@ class extract_meta_information():
         #remove stopwords
         nltk_stopwords = set(stopwords.words('english'))
         text = remove_stopwords(text)
-        #run spacy name entity recognition model on it and store results of organization in mostcommon
+        #run spacy name entity recognition model on it and store results of organization with their count in mostcommon
         doc = self.nlp(text)
         items = [x.text for x in doc.ents if x.label_ in ['ORG']]
         mostcommon = Counter(items).most_common()
 
-        #return all entities, which appear more often than 3 times
+        #return all entities, which appear more often than 2 times
         mostcommon_3 = [mostcommon[i] for i in range(len(mostcommon)) if mostcommon[i][1] >= 3]
         
         return mostcommon_3
